@@ -1,6 +1,6 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+    "python.defaultInterpreterPath": "c:/Users/evgen/Repositories/docu-mate/backend/venv/Scripts/python.exe",
     "python.analysis.extraPaths": [
-        "${workspaceFolder}/backend/venv/Lib/site-packages"
+        "c:/Users/evgen/Repositories/docu-mate/backend/venv/Lib/site-packages"
     ]
 }
