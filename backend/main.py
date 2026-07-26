@@ -1,11 +1,13 @@
 import os
 import tempfile
 import uuid
+import asyncio
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response, FileResponse
+from pydantic import BaseModel
 from dotenv import load_dotenv
-import asyncio
 
 # LangChain Imports
 from langchain_community.document_loaders import PyPDFLoader
@@ -57,9 +59,6 @@ if PINECONE_API_KEY and GEMINI_API_KEY:
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "DocuMate AI API is running"}
-
-from fastapi.responses import Response, FileResponse
-import os
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
@@ -119,8 +118,6 @@ async def upload_document(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-from pydantic import BaseModel
 
 class ChatRequest(BaseModel):
     message: str
