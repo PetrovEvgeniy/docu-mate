@@ -1,18 +1,68 @@
 "use client";
 
-import { useState } from "react";
-import { useChat } from "@ai-sdk/react";
+import { useState, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { UploadCloud, MessageSquare, Database, FileText, Loader2 } from "lucide-react";
 
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"chat" | "data">("data");
-  
-  // Vercel AI SDK Chat hook
-  // We point the api endpoint to our python backend's /chat endpoint
-  const { messages, input, handleInputChange, handleSubmit, isLoading: isChatLoading } = useChat({
-    api: "http://localhost:8000/chat",
-  });
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isChatLoading) return;
+
+    const userMessage: Message = { id: Date.now().toString(), role: "user", content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setIsChatLoading(true);
+
+    const assistantId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "" }]);
+
+    try {
+      const response = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage.content }),
+      });
+
+      if (!response.ok || !response.body) {
+        const errData = await response.json().catch(() => ({ detail: "Chat request failed." }));
+        throw new Error(errData.detail || "Chat request failed.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setMessages(prev =>
+          prev.map(m => m.id === assistantId ? { ...m, content: m.content + chunk } : m)
+        );
+      }
+    } catch (err: any) {
+      setMessages(prev =>
+        prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${err.message}` } : m)
+      );
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
 
   // Upload State
   const [isUploading, setIsUploading] = useState(false);
@@ -40,7 +90,8 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(errorData.detail || `Upload failed: ${response.statusText}`);
       }
 
       const data = await response.json();

@@ -47,14 +47,27 @@ llm = None
 
 if PINECONE_API_KEY and GEMINI_API_KEY:
     try:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        embeddings = GoogleGenerativeAIEmbeddings(
+            model="gemini-embedding-2-preview",
+            google_api_key=GEMINI_API_KEY
+        )
         vector_store = PineconeVectorStore(
             index_name=PINECONE_INDEX_NAME, 
-            embedding=embeddings
+            embedding=embeddings,
+            pinecone_api_key=PINECONE_API_KEY
         )
-        llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash", streaming=True)
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash", 
+            streaming=True,
+            google_api_key=GEMINI_API_KEY
+        )
+        print("AI Services successfully initialized!")
     except Exception as e:
+        import traceback
         print(f"Error initializing AI services: {e}")
+        traceback.print_exc()
+else:
+    print("Warning: Missing required environment variables (PINECONE_API_KEY or GEMINI_API_KEY).")
 
 @app.get("/")
 def read_root():
@@ -117,6 +130,9 @@ async def upload_document(file: UploadFile = File(...)):
         }
 
     except Exception as e:
+        import traceback
+        print(f"Error during upload: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 class ChatRequest(BaseModel):
