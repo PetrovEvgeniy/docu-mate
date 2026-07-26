@@ -3,6 +3,10 @@
 import { useState, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { UploadCloud, MessageSquare, Database, FileText, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github-dark.css";
 
 type Message = {
   id: string;
@@ -240,7 +244,38 @@ export default function Home() {
                         ? 'bg-indigo-600 text-white rounded-tr-sm' 
                         : 'bg-neutral-800 text-neutral-200 rounded-tl-sm border border-neutral-700'
                     }`}>
-                      {m.content}
+                      {m.role === 'user' ? (
+                        m.content
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeHighlight]}
+                          components={{
+                            h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-neutral-100" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-lg font-semibold mt-3 mb-2 text-neutral-100" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-base font-semibold mt-2 mb-1 text-neutral-200" {...props} />,
+                            p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1 pl-2" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1 pl-2" {...props} />,
+                            li: ({node, ...props}) => <li className="text-neutral-300" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-semibold text-neutral-100" {...props} />,
+                            em: ({node, ...props}) => <em className="italic text-neutral-300" {...props} />,
+                            code: ({node, inline, ...props}: any) =>
+                              inline
+                                ? <code className="bg-neutral-900 text-indigo-300 px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                                : <code {...props} />,
+                            pre: ({node, ...props}) => <pre className="bg-neutral-900 rounded-xl p-4 my-2 overflow-x-auto text-sm" {...props} />,
+                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-indigo-500 pl-4 my-2 text-neutral-400 italic" {...props} />,
+                            table: ({node, ...props}) => <div className="overflow-x-auto my-2"><table className="min-w-full text-sm border-collapse" {...props} /></div>,
+                            th: ({node, ...props}) => <th className="border border-neutral-600 px-3 py-1.5 bg-neutral-900 text-left font-semibold text-neutral-200" {...props} />,
+                            td: ({node, ...props}) => <td className="border border-neutral-700 px-3 py-1.5 text-neutral-300" {...props} />,
+                            a: ({node, ...props}) => <a className="text-indigo-400 underline hover:text-indigo-300" target="_blank" rel="noopener noreferrer" {...props} />,
+                            hr: ({node, ...props}) => <hr className="border-neutral-700 my-3" {...props} />,
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
+                      )}
                     </div>
                   </div>
                 ))
