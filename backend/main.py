@@ -58,6 +58,16 @@ if PINECONE_API_KEY and GEMINI_API_KEY:
 def read_root():
     return {"status": "ok", "message": "DocuMate AI API is running"}
 
+from fastapi.responses import Response, FileResponse
+import os
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    file_path = os.path.join(os.path.dirname(__file__), "favicon.ico")
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="image/x-icon")
+    return Response(status_code=204)
+
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
     """
