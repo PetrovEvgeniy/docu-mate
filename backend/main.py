@@ -10,7 +10,8 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 # LangChain Imports
-from langchain_community.document_loaders import PyPDFLoader
+from pypdf import PdfReader
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_pinecone import PineconeVectorStore
@@ -98,9 +99,15 @@ async def upload_document(file: UploadFile = File(...)):
             tmp.write(content)
             tmp_path = tmp.name
 
-        # 1. Load PDF
-        loader = PyPDFLoader(tmp_path)
-        documents = loader.load()
+        # 1. Load PDF (using pypdf directly — langchain-community is deprecated)
+        reader = PdfReader(tmp_path)
+        documents = [
+            Document(
+                page_content=page.extract_text() or "",
+                metadata={"page": i, "source": tmp_path}
+            )
+            for i, page in enumerate(reader.pages)
+        ]
 
         # 2. Split Text
         text_splitter = RecursiveCharacterTextSplitter(
