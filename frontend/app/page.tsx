@@ -1,51 +1,53 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, MessageSquare, Database, FileText, Loader2 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import "highlight.js/styles/github-dark.css";
+import { UploadCloud, FileText } from "lucide-react";
 
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-};
+import type { Message, UploadedFile } from "@/lib/types";
+import { API_BASE, TABS } from "@/lib/constants";
+import { statusClasses, getStatusVariant } from "@/lib/uploadStatus";
+import { MessageBubble } from "@/components/chat/MessageBubble";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { EmptyChatState } from "@/components/chat/EmptyChatState";
 
 export default function Home() {
+  // ── Navigation ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"chat" | "data">("data");
+
+  // ── Chat state ──────────────────────────────────────────────────────────────
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
-  };
+  // ── Upload state ─────────────────────────────────────────────────────────────
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
-  const handleSubmit = async (e: SubmitEvent) => {
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  const handleSubmit = useCallback(async (e: SubmitEvent) => {
     e.preventDefault();
     if (!input.trim() || isChatLoading) return;
 
     const userMessage: Message = { id: Date.now().toString(), role: "user", content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const assistantId = String(Date.now() + 1);
+
+    setMessages(prev => [...prev, userMessage, { id: assistantId, role: "assistant", content: "" }]);
     setInput("");
     setIsChatLoading(true);
 
-    const assistantId = (Date.now() + 1).toString();
-    setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: "" }]);
-
     try {
-      const response = await fetch("http://localhost:8000/chat", {
+      const response = await fetch(`${API_BASE}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMessage.content }),
       });
 
       if (!response.ok || !response.body) {
-        const errData = await response.json().catch(() => ({ detail: "Chat request failed." }));
-        throw new Error(errData.detail || "Chat request failed.");
+        const { detail } = await response.json().catch(() => ({ detail: "Chat request failed." }));
+        throw new Error(detail ?? "Chat request failed.");
       }
 
       const reader = response.body.getReader();
@@ -59,24 +61,19 @@ export default function Home() {
           prev.map(m => m.id === assistantId ? { ...m, content: m.content + chunk } : m)
         );
       }
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
       setMessages(prev =>
-        prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${err.message}` } : m)
+        prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${msg}` } : m)
       );
     } finally {
       setIsChatLoading(false);
     }
-  };
+  }, [input, isChatLoading]);
 
-  // Upload State
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<{name: string, id: string}[]>([]);
-
-  // Dropzone setup
-  const onDrop = async (acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    if (!file || !file.name.endsWith(".pdf")) {
+    if (!file?.name.endsWith(".pdf")) {
       setUploadStatus("Error: Only PDF files are supported.");
       return;
     }
@@ -88,30 +85,34 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8000/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(`${API_BASE}/upload`, { method: "POST", body: formData });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-        throw new Error(errorData.detail || `Upload failed: ${response.statusText}`);
+        const { detail } = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(detail ?? `Upload failed: ${response.statusText}`);
       }
 
       const data = await response.json();
       setUploadedFiles(prev => [...prev, { name: data.filename, id: data.file_id }]);
       setUploadStatus(`Success! Processed ${data.chunks_processed} chunks.`);
-    } catch (error: any) {
-      setUploadStatus(`Error: ${error.message}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setUploadStatus(`Error: ${msg}`);
     } finally {
       setIsUploading(false);
     }
-  };
+  }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: {'application/pdf': ['.pdf']} });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { "application/pdf": [".pdf"] },
+  });
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 font-sans flex flex-col">
+
       {/* Header */}
       <header className="border-b border-neutral-800 p-6 flex justify-between items-center bg-neutral-900/50 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">
@@ -120,54 +121,54 @@ export default function Home() {
             DocuMate
           </h1>
         </div>
-        
-        {/* Tabs */}
-        <div className="flex p-1 bg-neutral-900 rounded-lg border border-neutral-800">
-          <button
-            onClick={() => setActiveTab("data")}
-            className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-              activeTab === "data" ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-            }`}
-          >
-            <UploadCloud className="w-4 h-4" />
-            Data Sources
-          </button>
-          <button
-            onClick={() => setActiveTab("chat")}
-            className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-              activeTab === "chat" ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            Chat
-          </button>
-        </div>
+
+        <nav className="flex p-1 bg-neutral-900 rounded-lg border border-neutral-800">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                activeTab === id
+                  ? "bg-neutral-800 text-white shadow-sm"
+                  : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-6 flex flex-col">
+
         {activeTab === "data" ? (
+
+          /* ── Data Sources Tab ── */
           <div className="flex-1 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
               <h2 className="text-3xl font-light mb-2">Knowledge Base</h2>
-              <p className="text-neutral-400">Upload PDF documents to expand the AI's knowledge.</p>
+              <p className="text-neutral-400">Upload PDF documents to expand the AI&apos;s knowledge.</p>
             </div>
-            
-            <div 
-              {...getRootProps()} 
+
+            {/* Dropzone */}
+            <div
+              {...getRootProps()}
               className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 flex flex-col items-center justify-center min-h-[300px] ${
-                isDragActive 
-                  ? "border-indigo-500 bg-indigo-500/10 scale-[1.02]" 
+                isDragActive
+                  ? "border-indigo-500 bg-indigo-500/10 scale-[1.02]"
                   : isUploading
                     ? "border-neutral-800 bg-neutral-900/50 cursor-not-allowed"
                     : "border-neutral-800 hover:border-neutral-700 hover:bg-neutral-900"
               }`}
             >
               <input {...getInputProps()} disabled={isUploading} />
-              
               {isUploading ? (
                 <div className="flex flex-col items-center gap-4 text-indigo-400">
-                  <Loader2 className="w-12 h-12 animate-spin" />
+                  <svg className="w-12 h-12 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
                   <p className="font-medium animate-pulse">Analyzing and embedding document...</p>
                 </div>
               ) : (
@@ -183,23 +184,24 @@ export default function Home() {
               )}
             </div>
 
+            {/* Upload status banner */}
             {uploadStatus && (
-              <div className={`p-4 rounded-xl border flex items-center gap-3 ${
-                uploadStatus.startsWith("Error") ? "bg-red-500/10 border-red-500/20 text-red-400" :
-                uploadStatus.startsWith("Success") ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
-                "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
-              }`}>
-                {uploadStatus.startsWith("Success") && <FileText className="w-5 h-5" />}
+              <div className={`p-4 rounded-xl border flex items-center gap-3 ${statusClasses[getStatusVariant(uploadStatus)]}`}>
+                {getStatusVariant(uploadStatus) === "success" && <FileText className="w-5 h-5" />}
                 <p>{uploadStatus}</p>
               </div>
             )}
 
+            {/* Processed file list */}
             {uploadedFiles.length > 0 && (
               <div className="mt-8">
                 <h3 className="text-lg font-medium mb-4 text-neutral-300">Processed Documents</h3>
                 <div className="grid gap-3">
-                  {uploadedFiles.map((file, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 group hover:border-neutral-700 transition-colors">
+                  {uploadedFiles.map(file => (
+                    <div
+                      key={file.id}
+                      className="flex items-center gap-4 p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 group hover:border-neutral-700 transition-colors"
+                    >
                       <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 group-hover:bg-indigo-500/30 transition-colors">
                         <FileText className="w-5 h-5" />
                       </div>
@@ -213,100 +215,32 @@ export default function Home() {
               </div>
             )}
           </div>
+
         ) : (
+
+          /* ── Chat Tab ── */
           <div className="flex-1 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/50 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Chat Messages Area */}
+
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
               {messages.length === 0 ? (
-                <div className="m-auto text-center flex flex-col items-center gap-4 text-neutral-500">
-                  <div className="w-16 h-16 bg-neutral-800 rounded-2xl flex items-center justify-center rotate-3 shadow-lg">
-                    <MessageSquare className="w-8 h-8 text-indigo-500" />
-                  </div>
-                  <h3 className="text-xl font-medium text-neutral-300">Ask DocuMate</h3>
-                  <p className="max-w-xs">Ask questions about the documents you've uploaded to the knowledge base.</p>
-                </div>
+                <EmptyChatState />
               ) : (
-                messages.map(m => (
-                  <div key={m.id} className={`flex gap-4 max-w-[80%] ${m.role === 'user' ? 'self-end flex-row-reverse' : 'self-start'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm overflow-hidden ${
-                      m.role === 'user' ? 'ring-1 ring-white/70' : 'bg-neutral-700'
-                    }`}>
-                      {m.role === 'user' ? (
-                        <img src="/user-avatar.png" alt="User" className="w-full h-full object-cover [clip-path:circle(50%)]" />
-                      ) : (
-                        <Database className="w-4 h-4 text-neutral-300" />
-                      )}
-                    </div>
-                    <div className="relative">
-                      {m.role === 'user' ? (
-                        <div className="absolute top-3 -right-1 w-2.5 h-2.5 bg-indigo-600 rotate-45 z-10" />
-                      ) : (
-                        <div className="absolute top-3 -left-1 w-2.5 h-2.5 bg-neutral-800 border-l border-b border-neutral-700 rotate-45 z-10" />
-                      )}
-                    <div className={`px-5 py-3 rounded-2xl shadow-sm leading-relaxed ${
-                      m.role === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-tr-none' 
-                        : 'bg-neutral-800 text-neutral-200 rounded-tl-none border border-neutral-700'
-                    }`}>
-                      {m.role === 'user' ? (
-                        m.content
-                      ) : (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight]}
-                          components={{
-                            h1: ({node, ...props}) => <h1 className="text-xl font-bold mt-4 mb-2 text-neutral-100" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-lg font-semibold mt-3 mb-2 text-neutral-100" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-base font-semibold mt-2 mb-1 text-neutral-200" {...props} />,
-                            p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1 pl-2" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1 pl-2" {...props} />,
-                            li: ({node, ...props}) => <li className="text-neutral-300" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-semibold text-neutral-100" {...props} />,
-                            em: ({node, ...props}) => <em className="italic text-neutral-300" {...props} />,
-                            code: ({node, inline, ...props}: any) =>
-                              inline
-                                ? <code className="bg-neutral-900 text-indigo-300 px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
-                                : <code {...props} />,
-                            pre: ({node, ...props}) => <pre className="bg-neutral-900 rounded-xl p-4 my-2 overflow-x-auto text-sm" {...props} />,
-                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-indigo-500 pl-4 my-2 text-neutral-400 italic" {...props} />,
-                            table: ({node, ...props}) => <div className="overflow-x-auto my-2"><table className="min-w-full text-sm border-collapse" {...props} /></div>,
-                            th: ({node, ...props}) => <th className="border border-neutral-600 px-3 py-1.5 bg-neutral-900 text-left font-semibold text-neutral-200" {...props} />,
-                            td: ({node, ...props}) => <td className="border border-neutral-700 px-3 py-1.5 text-neutral-300" {...props} />,
-                            a: ({node, ...props}) => <a className="text-indigo-400 underline hover:text-indigo-300" target="_blank" rel="noopener noreferrer" {...props} />,
-                            hr: ({node, ...props}) => <hr className="border-neutral-700 my-3" {...props} />,
-                          }}
-                        >
-                          {m.content}
-                        </ReactMarkdown>
-                      )}
-                    </div>
-                    </div>
-                  </div>
-                ))
+                messages.map(m => <MessageBubble key={m.id} message={m} />)
               )}
-              {isChatLoading && (
-                 <div className="flex gap-4 max-w-[80%] self-start">
-                  <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
-                    <Loader2 className="w-4 h-4 text-neutral-400 animate-spin" />
-                  </div>
-                  <div className="px-5 py-3 rounded-2xl bg-neutral-800 text-neutral-400 rounded-tl-sm border border-neutral-700">
-                    Thinking...
-                  </div>
-                 </div>
-              )}
+              {isChatLoading && <TypingIndicator />}
             </div>
-            
-            {/* Input Area */}
+
+            {/* Input */}
             <div className="p-4 bg-neutral-950/50 border-t border-neutral-800">
               <form onSubmit={handleSubmit} className="flex gap-2">
                 <input
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={e => setInput(e.target.value)}
                   placeholder="Ask a question about your documents..."
                   className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-neutral-200 placeholder:text-neutral-500"
                 />
-                <button 
+                <button
                   type="submit"
                   disabled={!input.trim() || isChatLoading}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20"
@@ -316,6 +250,7 @@ export default function Home() {
               </form>
             </div>
           </div>
+
         )}
       </main>
     </div>
