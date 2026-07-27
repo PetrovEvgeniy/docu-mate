@@ -228,11 +228,11 @@ export default function Home() {
               ) : (
                 messages.map(m => (
                   <div key={m.id} className={`flex gap-4 max-w-[80%] ${m.role === 'user' ? 'self-end flex-row-reverse' : 'self-start'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
-                      m.role === 'user' ? 'bg-indigo-600' : 'bg-neutral-700'
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm overflow-hidden ${
+                      m.role === 'user' ? 'ring-1 ring-white/70' : 'bg-neutral-700'
                     }`}>
                       {m.role === 'user' ? (
-                        <div className="w-3 h-3 bg-white rounded-full opacity-80" />
+                        <img src="/user-avatar.png" alt="User" className="w-full h-full object-cover [clip-path:circle(50%)]" />
                       ) : (
                         <Database className="w-4 h-4 text-neutral-300" />
                       )}
