@@ -237,10 +237,16 @@ export default function Home() {
                         <Database className="w-4 h-4 text-neutral-300" />
                       )}
                     </div>
+                    <div className="relative">
+                      {m.role === 'user' ? (
+                        <div className="absolute top-3 -right-1 w-2.5 h-2.5 bg-indigo-600 rotate-45 z-10" />
+                      ) : (
+                        <div className="absolute top-3 -left-1 w-2.5 h-2.5 bg-neutral-800 border-l border-b border-neutral-700 rotate-45 z-10" />
+                      )}
                     <div className={`px-5 py-3 rounded-2xl shadow-sm leading-relaxed ${
                       m.role === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                        : 'bg-neutral-800 text-neutral-200 rounded-tl-sm border border-neutral-700'
+                        ? 'bg-indigo-600 text-white rounded-tr-none' 
+                        : 'bg-neutral-800 text-neutral-200 rounded-tl-none border border-neutral-700'
                     }`}>
                       {m.role === 'user' ? (
                         m.content
@@ -274,6 +280,7 @@ export default function Home() {
                           {m.content}
                         </ReactMarkdown>
                       )}
+                    </div>
                     </div>
                   </div>
                 ))
