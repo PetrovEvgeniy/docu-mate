@@ -24,7 +24,7 @@ export default function Home() {
     setInput(e.target.value);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
     if (!input.trim() || isChatLoading) return;
 
@@ -115,9 +115,7 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-neutral-800 p-6 flex justify-between items-center bg-neutral-900/50 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Database className="w-5 h-5 text-white" />
-          </div>
+          <img src="/favicon.png" alt="DocuMate logo" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-indigo-500/20" />
           <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
             DocuMate
           </h1>
