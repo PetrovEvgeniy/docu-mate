@@ -1,6 +1,7 @@
 {
-    "python.defaultInterpreterPath": "c:/Users/evgen/Repositories/docu-mate/backend/venv/Scripts/python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
     "python.analysis.extraPaths": [
-        "c:/Users/evgen/Repositories/docu-mate/backend/venv/Lib/site-packages"
-    ]
+        "${workspaceFolder}/backend/venv/Lib/site-packages"
+    ],
+    "css.lint.unknownAtRules": "ignore"
 }
