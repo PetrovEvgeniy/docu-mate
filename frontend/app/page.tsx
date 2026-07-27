@@ -34,7 +34,7 @@ export default function Home() {
     const userMessage: Message = { id: Date.now().toString(), role: "user", content: input };
     const assistantId = String(Date.now() + 1);
 
-    setMessages(prev => [...prev, userMessage, { id: assistantId, role: "assistant", content: "" }]);
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsChatLoading(true);
 
@@ -52,20 +52,26 @@ export default function Home() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let isFirstChunk = true;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
-        setMessages(prev =>
-          prev.map(m => m.id === assistantId ? { ...m, content: m.content + chunk } : m)
-        );
+
+        if (isFirstChunk) {
+          // Add the assistant bubble on the first chunk (no empty bubble during loading)
+          setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: chunk }]);
+          isFirstChunk = false;
+        } else {
+          setMessages(prev =>
+            prev.map(m => m.id === assistantId ? { ...m, content: m.content + chunk } : m)
+          );
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
-      setMessages(prev =>
-        prev.map(m => m.id === assistantId ? { ...m, content: `Error: ${msg}` } : m)
-      );
+      setMessages(prev => [...prev, { id: assistantId, role: "assistant", content: `Error: ${msg}` }]);
     } finally {
       setIsChatLoading(false);
     }
