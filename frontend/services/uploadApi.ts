@@ -6,16 +6,24 @@ export interface UploadResult {
   chunksProcessed: number;
 }
 
-export async function uploadDocument(file: File): Promise<UploadResult> {
+export async function uploadDocument(
+  file: File,
+  sessionId: string,
+  accessToken: string,
+): Promise<UploadResult> {
   if (!file.name.endsWith(".pdf")) {
     throw new Error("Only PDF files are supported.");
   }
 
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("session_id", sessionId);
 
   const response = await fetch(`${API_BASE}/upload`, {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: formData,
   });
 

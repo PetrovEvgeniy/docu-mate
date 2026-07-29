@@ -2,8 +2,12 @@ import os
 import tempfile
 import uuid
 import asyncio
+import warnings
 from datetime import timedelta
 from typing import Optional
+
+# Suppress bcrypt version warning (cosmetic only, passlib handles it)
+warnings.filterwarnings("ignore", message=".*bcrypt.*__about__.*")
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware

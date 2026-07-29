@@ -3,11 +3,19 @@ import { API_BASE } from "@/lib/constants";
 export async function sendChatMessage(
   message: string,
   onChunk: (chunk: string) => void,
+  sessionId?: string,
+  accessToken?: string,
 ): Promise<void> {
   const response = await fetch(`${API_BASE}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+    },
+    body: JSON.stringify({
+      message,
+      ...(sessionId && { session_id: sessionId }),
+    }),
   });
 
   if (!response.ok || !response.body) {

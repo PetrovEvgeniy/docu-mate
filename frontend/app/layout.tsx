@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from "next"
+import { SessionProvider } from "next-auth/react"
+import "./globals.css"
 
 export const metadata: Metadata = {
   title: "DocuMate",
@@ -8,18 +9,18 @@ export const metadata: Metadata = {
     icon: "/favicon.png",
     shortcut: "/favicon.png",
   },
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
-  );
+  )
 }
