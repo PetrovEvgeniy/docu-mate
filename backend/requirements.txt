@@ -7,3 +7,10 @@ python-multipart
 pydantic
 python-dotenv
 pypdf
+sqlalchemy>=2.0.0
+asyncpg
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+langchain-text-splitters
+langchain-pinecone
