@@ -17,7 +17,7 @@ class User(Base):
     oauth_provider = Column(String(50))  # 'google', 'github', or NULL
     oauth_id = Column(String(255))
     total_storage_bytes = Column(BigInteger, default=0, nullable=False)
-    storage_limit_bytes = Column(BigInteger, default=2147483648, nullable=False)  # 2GB default
+    storage_limit_bytes = Column(BigInteger, default=85899346, nullable=False)  # 81.92 MB default (2GB Pinecone / 25 users)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
