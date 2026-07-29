@@ -68,6 +68,9 @@ venv.bak/
 # IDE / Editor
 .vscode/
 
-# plans
+# plans and documentation (internal)
 plan.md
 implementation_plan.md
+PHASE_*.md
+**/PHASE_*.md
+.docs/
