@@ -292,6 +292,7 @@ async def upload_document(
             "filename": file.filename,
             "chunks_processed": len(chunks),
             "file_id": file_id,
+            "file_size_bytes": file_size,
             "storage_used": current_user.total_storage_bytes,
             "storage_limit": current_user.storage_limit_bytes
         }

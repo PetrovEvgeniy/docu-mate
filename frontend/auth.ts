@@ -56,13 +56,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.accessToken = user.accessToken
         token.id = user.id
         token.totalStorageBytes = user.totalStorageBytes
         token.storageLimitBytes = user.storageLimitBytes
       }
+
+      if (trigger === "update" && token.accessToken) {
+        try {
+          const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+          const res = await fetch(`${apiUrl}/auth/me`, {
+            headers: { Authorization: `Bearer ${token.accessToken}` },
+          })
+          if (res.ok) {
+            const data = await res.json()
+            token.totalStorageBytes = data.total_storage_bytes
+            token.storageLimitBytes = data.storage_limit_bytes
+            console.log('Storage refreshed:', data.total_storage_bytes, 'bytes')
+          }
+        } catch (error) {
+          console.error("Error refreshing storage:", error)
+        }
+      }
+
       return token
     },
     async session({ session, token }) {

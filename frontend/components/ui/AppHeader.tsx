@@ -5,6 +5,7 @@ import { signOut, useSession } from "next-auth/react"
 import { TABS } from "@/lib/constants"
 import type { Tab } from "@/lib/types"
 import { User, LogOut, HardDrive, ChevronDown } from "lucide-react"
+import { useStorage } from "@/contexts/StorageContext"
 
 interface AppHeaderProps {
   activeTab: Tab
@@ -13,17 +14,16 @@ interface AppHeaderProps {
 
 export function AppHeader({ activeTab, onTabChange }: AppHeaderProps) {
   const { data: session } = useSession()
+  const { storage } = useStorage()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const storageUsedMB = session?.user?.totalStorageBytes
-    ? (session.user.totalStorageBytes / (1024 * 1024)).toFixed(2)
+  const storageUsedMB = storage
+    ? (storage.used_bytes / (1024 * 1024)).toFixed(2)
     : "0.00"
-  const storageLimitMB = session?.user?.storageLimitBytes
-    ? (session.user.storageLimitBytes / (1024 * 1024)).toFixed(2)
+  const storageLimitMB = storage
+    ? (storage.limit_bytes / (1024 * 1024)).toFixed(2)
     : "81.92"
-  const storagePercentage = session?.user?.totalStorageBytes && session?.user?.storageLimitBytes
-    ? (session.user.totalStorageBytes / session.user.storageLimitBytes) * 100
-    : 0
+  const storagePercentage = storage?.percentage_used || 0
 
   return (
     <header className="border-b border-neutral-800 p-6 flex justify-between items-center bg-neutral-900/50 backdrop-blur-md sticky top-0 z-10">

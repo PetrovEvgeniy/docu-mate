@@ -7,19 +7,18 @@ import { uploadDocument } from "@/services/uploadApi";
 import { getDocuments, deleteDocument } from "@/services/documentApi";
 import type { UploadedFile } from "@/lib/types";
 
-export function useFileUpload(sessionId?: string | null) {
+export function useFileUpload(sessionId?: string | null, onStorageChange?: () => void) {
   const { data: session } = useSession();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
-  // Load documents on mount (not dependent on sessionId anymore)
+  // Load documents on mount
   useEffect(() => {
     if (session?.user?.accessToken) {
       loadDocuments();
     } else if (session === null) {
-      // Session loaded but user not authenticated - clear documents
       setUploadedFiles([]);
     }
   }, [session?.user?.accessToken, session]);
@@ -32,7 +31,9 @@ export function useFileUpload(sessionId?: string | null) {
       const docs = await getDocuments(session.user.accessToken);
       setUploadedFiles(docs);
     } catch (error) {
-      console.error("Failed to load documents:", error);
+      if (session?.user?.accessToken) {
+        console.error("Failed to load documents:", error);
+      }
     } finally {
       setIsLoadingDocuments(false);
     }
@@ -46,6 +47,8 @@ export function useFileUpload(sessionId?: string | null) {
       setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
       setUploadStatus("Document deleted successfully");
       setTimeout(() => setUploadStatus(null), 3000);
+
+      onStorageChange?.();
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to delete";
       setUploadStatus(`Error: ${msg}`);
@@ -73,6 +76,8 @@ export function useFileUpload(sessionId?: string | null) {
         );
         setUploadedFiles((prev) => [...prev, result.file]);
         setUploadStatus(`Success! Processed ${result.chunksProcessed} chunks.`);
+
+        onStorageChange?.();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         setUploadStatus(`Error: ${msg}`);

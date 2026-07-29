@@ -3,10 +3,12 @@
 import { FileText, UploadCloud, Trash2 } from "lucide-react";
 import { statusClasses, getStatusVariant } from "@/lib/constants";
 import { useFileUpload } from "@/hooks/useFileUpload";
+import { useStorage } from "@/contexts/StorageContext";
 
 export function DataSourcesView() {
+  const { refreshStorage } = useStorage();
   const { isUploading, uploadStatus, uploadedFiles, isLoadingDocuments, dropzoneProps, handleDeleteDocument } =
-    useFileUpload();
+    useFileUpload(null, refreshStorage);
 
   const { getRootProps, getInputProps, isDragActive } = dropzoneProps;
 

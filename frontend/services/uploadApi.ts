@@ -38,7 +38,11 @@ export async function uploadDocument(
 
   const data = await response.json();
   return {
-    file: { name: data.filename, id: data.file_id },
+    file: {
+      name: data.filename,
+      id: data.file_id,
+      file_size_bytes: data.file_size_bytes,
+    },
     chunksProcessed: data.chunks_processed,
   };
 }
