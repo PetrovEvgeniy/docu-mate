@@ -8,7 +8,7 @@ export interface UploadResult {
 
 export async function uploadDocument(
   file: File,
-  sessionId: string,
+  sessionId: string | null,
   accessToken: string,
 ): Promise<UploadResult> {
   if (!file.name.endsWith(".pdf")) {
@@ -17,7 +17,9 @@ export async function uploadDocument(
 
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("session_id", sessionId);
+  if (sessionId) {
+    formData.append("session_id", sessionId);
+  }
 
   const response = await fetch(`${API_BASE}/upload`, {
     method: "POST",

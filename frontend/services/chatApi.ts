@@ -3,9 +3,9 @@ import { API_BASE } from "@/lib/constants";
 export async function sendChatMessage(
   message: string,
   onChunk: (chunk: string) => void,
-  sessionId?: string,
+  sessionId?: string | null,
   accessToken?: string,
-): Promise<void> {
+): Promise<string | null> {
   const response = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: {
@@ -25,6 +25,9 @@ export async function sendChatMessage(
     throw new Error(detail ?? "Chat request failed.");
   }
 
+  // Extract session ID from response header
+  const newSessionId = response.headers.get("X-Session-Id");
+
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
@@ -34,4 +37,6 @@ export async function sendChatMessage(
     const chunk = decoder.decode(value, { stream: true });
     onChunk(chunk);
   }
+
+  return newSessionId;
 }

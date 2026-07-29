@@ -51,7 +51,7 @@ class Document(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)  # Matches file_id in Pinecone
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     filename = Column(String(512), nullable=False)
     chunk_count = Column(Integer, nullable=False)
     file_size_bytes = Column(BigInteger, nullable=False)

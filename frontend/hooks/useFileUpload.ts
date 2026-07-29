@@ -1,38 +1,99 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { useDropzone } from "react-dropzone";
 import { uploadDocument } from "@/services/uploadApi";
+import { getDocuments, deleteDocument } from "@/services/documentApi";
 import type { UploadedFile } from "@/lib/types";
 
-export function useFileUpload() {
+export function useFileUpload(sessionId?: string | null) {
+  const { data: session } = useSession();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
+  // Load documents on mount (not dependent on sessionId anymore)
+  useEffect(() => {
+    if (session?.user?.accessToken) {
+      loadDocuments();
+    } else if (session === null) {
+      // Session loaded but user not authenticated - clear documents
+      setUploadedFiles([]);
+    }
+  }, [session?.user?.accessToken, session]);
 
-    setIsUploading(true);
-    setUploadStatus("Uploading and processing document...");
+  const loadDocuments = async () => {
+    if (!session?.user?.accessToken) return;
+
+    setIsLoadingDocuments(true);
+    try {
+      const docs = await getDocuments(session.user.accessToken);
+      setUploadedFiles(docs);
+    } catch (error) {
+      console.error("Failed to load documents:", error);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  const handleDeleteDocument = async (fileId: string) => {
+    if (!session?.user?.accessToken) return;
 
     try {
-      const result = await uploadDocument(file);
-      setUploadedFiles((prev) => [...prev, result.file]);
-      setUploadStatus(`Success! Processed ${result.chunksProcessed} chunks.`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
+      await deleteDocument(fileId, session.user.accessToken);
+      setUploadedFiles((prev) => prev.filter((f) => f.id !== fileId));
+      setUploadStatus("Document deleted successfully");
+      setTimeout(() => setUploadStatus(null), 3000);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to delete";
       setUploadStatus(`Error: ${msg}`);
-    } finally {
-      setIsUploading(false);
     }
-  }, []);
+  };
+
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (!file) return;
+
+      if (!session?.user?.accessToken) {
+        setUploadStatus("Error: Please log in to upload documents");
+        return;
+      }
+
+      setIsUploading(true);
+      setUploadStatus("Uploading and processing document...");
+
+      try {
+        const result = await uploadDocument(
+          file,
+          sessionId || null,
+          session.user.accessToken,
+        );
+        setUploadedFiles((prev) => [...prev, result.file]);
+        setUploadStatus(`Success! Processed ${result.chunksProcessed} chunks.`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setUploadStatus(`Error: ${msg}`);
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [session?.user?.accessToken, sessionId],
+  );
 
   const dropzoneProps = useDropzone({
     onDrop,
     accept: { "application/pdf": [".pdf"] },
   });
 
-  return { isUploading, uploadStatus, uploadedFiles, dropzoneProps };
+  return {
+    isUploading,
+    uploadStatus,
+    uploadedFiles,
+    isLoadingDocuments,
+    dropzoneProps,
+    handleDeleteDocument,
+  };
 }

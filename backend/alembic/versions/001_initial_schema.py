@@ -52,12 +52,12 @@ def upgrade() -> None:
     op.create_table('documents',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('session_id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('session_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('filename', sa.String(length=512), nullable=False),
         sa.Column('chunk_count', sa.Integer(), nullable=False),
         sa.Column('file_size_bytes', sa.BigInteger(), nullable=False),
         sa.Column('uploaded_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.ForeignKeyConstraint(['session_id'], ['chat_sessions.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['session_id'], ['chat_sessions.id'], ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )

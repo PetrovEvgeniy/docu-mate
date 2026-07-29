@@ -76,8 +76,11 @@ export function useChat() {
   useEffect(() => {
     if (session?.user?.accessToken) {
       loadSessions();
+    } else if (session === null) {
+      // Session loaded but user not authenticated - clear sessions
+      setSessions([]);
     }
-  }, [session?.user?.accessToken, loadSessions]);
+  }, [session?.user?.accessToken, session, loadSessions]);
 
   const handleSubmit = useCallback(
     async (e: ReactSubmitEvent<HTMLFormElement>) => {
@@ -97,7 +100,7 @@ export function useChat() {
 
       try {
         let isFirstChunk = true;
-        await sendChatMessage(
+        const newSessionId = await sendChatMessage(
           userMessage.content,
           (chunk) => {
             if (isFirstChunk) {
@@ -119,6 +122,11 @@ export function useChat() {
           currentSessionId,
           session.user.accessToken,
         );
+
+        // Update session ID if a new session was created
+        if (newSessionId && !currentSessionId) {
+          setCurrentSessionId(newSessionId);
+        }
 
         // Reload sessions to get the updated list (new session might have been created)
         await loadSessions();

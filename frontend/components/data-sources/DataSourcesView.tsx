@@ -1,11 +1,11 @@
 "use client";
 
-import { FileText, UploadCloud } from "lucide-react";
+import { FileText, UploadCloud, Trash2 } from "lucide-react";
 import { statusClasses, getStatusVariant } from "@/lib/constants";
 import { useFileUpload } from "@/hooks/useFileUpload";
 
 export function DataSourcesView() {
-  const { isUploading, uploadStatus, uploadedFiles, dropzoneProps } =
+  const { isUploading, uploadStatus, uploadedFiles, isLoadingDocuments, dropzoneProps, handleDeleteDocument } =
     useFileUpload();
 
   const { getRootProps, getInputProps, isDragActive } = dropzoneProps;
@@ -15,7 +15,7 @@ export function DataSourcesView() {
       <div>
         <h2 className="text-3xl font-light mb-2">Knowledge Base</h2>
         <p className="text-neutral-400">
-          Upload PDF documents to expand the AI&apos;s knowledge.
+          Upload PDF documents to your knowledge base. They will be available in all chat sessions.
         </p>
       </div>
 
@@ -69,10 +69,12 @@ export function DataSourcesView() {
       )}
 
       {/* Processed file list */}
-      {uploadedFiles.length > 0 && (
+      {isLoadingDocuments ? (
+        <div className="text-center text-neutral-500 py-8">Loading documents...</div>
+      ) : uploadedFiles.length > 0 ? (
         <div className="mt-8">
           <h3 className="text-lg font-medium mb-4 text-neutral-300">
-            Processed Documents
+            Your Documents ({uploadedFiles.length})
           </h3>
           <div className="grid gap-3">
             {uploadedFiles.map((file) => (
@@ -83,15 +85,32 @@ export function DataSourcesView() {
                 <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 group-hover:bg-indigo-500/30 transition-colors">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-neutral-200">{file.name}</p>
                   <p className="text-xs text-neutral-500 font-mono mt-1">
-                    ID: {file.id}
+                    {file.file_size_bytes
+                      ? `${(file.file_size_bytes / 1024).toFixed(2)} KB`
+                      : `ID: ${file.id}`}
                   </p>
                 </div>
+                <button
+                  onClick={() => {
+                    if (confirm(`Delete "${file.name}"?`)) {
+                      handleDeleteDocument(file.id);
+                    }
+                  }}
+                  className="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded transition-all"
+                  title="Delete document"
+                >
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                </button>
               </div>
             ))}
           </div>
+        </div>
+      ) : (
+        <div className="text-center text-neutral-500 py-8">
+          No documents uploaded yet. Upload your first PDF to get started.
         </div>
       )}
     </div>

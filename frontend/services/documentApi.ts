@@ -3,13 +3,8 @@ import type { UploadedFile, StorageInfo } from "@/lib/types"
 
 export async function getDocuments(
   accessToken: string,
-  sessionId?: string,
 ): Promise<UploadedFile[]> {
-  const url = sessionId
-    ? `${API_BASE}/documents?session_id=${sessionId}`
-    : `${API_BASE}/documents`
-
-  const response = await fetch(url, {
+  const response = await fetch(`${API_BASE}/documents`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
 

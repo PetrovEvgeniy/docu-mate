@@ -22,7 +22,7 @@ from pypdf import PdfReader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from pinecone import Pinecone
@@ -68,6 +68,7 @@ app.add_middleware(
 embeddings = None
 vector_store = None
 llm = None
+pinecone_index = None
 
 if PINECONE_API_KEY and GEMINI_API_KEY:
     try:
@@ -75,13 +76,20 @@ if PINECONE_API_KEY and GEMINI_API_KEY:
             model="gemini-embedding-2-preview",
             google_api_key=GEMINI_API_KEY
         )
+
+        # Initialize Pinecone client for direct operations
+        pc = Pinecone(api_key=PINECONE_API_KEY)
+        pinecone_index = pc.Index(PINECONE_INDEX_NAME)
+
+        # Import PineconeVectorStore here to avoid issues
+        from langchain_pinecone import PineconeVectorStore
         vector_store = PineconeVectorStore(
-            index_name=PINECONE_INDEX_NAME, 
+            index_name=PINECONE_INDEX_NAME,
             embedding=embeddings,
             pinecone_api_key=PINECONE_API_KEY
         )
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash", 
+            model="gemini-2.5-flash",
             streaming=True,
             google_api_key=GEMINI_API_KEY
         )
@@ -188,13 +196,13 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 @app.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    session_id: str = Form(...),
+    session_id: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Endpoint to handle document uploads, parse text, chunk, and embed to Pinecone.
-    Documents are scoped to chat sessions.
+    Documents belong to users (session_id is optional for future filtering).
     """
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported currently.")
@@ -203,14 +211,16 @@ async def upload_document(
         raise HTTPException(status_code=500, detail="Vector store is not initialized properly.")
 
     try:
-        # Verify session belongs to user
-        result = await db.execute(
-            select(ChatSession).where(ChatSession.id == uuid.UUID(session_id))
-        )
-        session = result.scalar_one_or_none()
+        # Verify session belongs to user (if provided)
+        session = None
+        if session_id:
+            result = await db.execute(
+                select(ChatSession).where(ChatSession.id == uuid.UUID(session_id))
+            )
+            session = result.scalar_one_or_none()
 
-        if not session or session.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Session not found or unauthorized")
+            if not session or session.user_id != current_user.id:
+                raise HTTPException(status_code=403, detail="Session not found or unauthorized")
 
         # Read file and check storage limit
         content = await file.read()
@@ -246,13 +256,14 @@ async def upload_document(
         )
         chunks = text_splitter.split_documents(documents)
 
-        # 3. Add metadata to chunks (user_id and session_id for filtering)
+        # 3. Add metadata to chunks (user_id for filtering, session_id optional)
         file_id = str(uuid.uuid4())
         for chunk in chunks:
             chunk.metadata["source_filename"] = file.filename
             chunk.metadata["file_id"] = file_id
             chunk.metadata["user_id"] = str(current_user.id)
-            chunk.metadata["session_id"] = str(session.id)
+            if session:
+                chunk.metadata["session_id"] = str(session.id)
 
         # 4. Embed and Upload to Pinecone
         vector_store.add_documents(chunks)
@@ -261,7 +272,7 @@ async def upload_document(
         document = DBDocument(
             id=uuid.UUID(file_id),
             user_id=current_user.id,
-            session_id=session.id,
+            session_id=session.id if session else None,
             filename=file.filename,
             chunk_count=len(chunks),
             file_size_bytes=file_size
@@ -339,13 +350,12 @@ async def chat(
     db.add(user_msg)
     await db.commit()
 
-    # Vector Search filtered by session_id (session-scoped documents)
+    # Vector Search filtered by user_id (all user documents)
     retrieved_docs = vector_store.similarity_search(
         request.message,
         k=4,
         filter={
-            "user_id": str(current_user.id),
-            "session_id": str(session.id)
+            "user_id": str(current_user.id)
         }
     )
 
@@ -381,7 +391,13 @@ Context:
         db.add(assistant_msg)
         await db.commit()
 
-    return StreamingResponse(generate(), media_type="text/plain")
+    return StreamingResponse(
+        generate(),
+        media_type="text/plain",
+        headers={
+            "X-Session-Id": str(session.id)  # Return session ID in header
+        }
+    )
 
 # ==================== Chat Session Endpoints ====================
 
@@ -485,10 +501,9 @@ async def list_documents(
     return [
         {
             "id": str(doc.id),
-            "filename": doc.filename,
-            "chunk_count": doc.chunk_count,
+            "name": doc.filename,
             "file_size_bytes": doc.file_size_bytes,
-            "session_id": str(doc.session_id),
+            "session_id": str(doc.session_id) if doc.session_id else None,
             "uploaded_at": doc.uploaded_at.isoformat()
         }
         for doc in documents
@@ -510,18 +525,27 @@ async def delete_document(
     if not document or document.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Delete vectors from Pinecone
+    # Delete vectors from Pinecone using direct client with metadata filtering
     try:
-        # Note: Pinecone's delete with metadata filtering
-        vector_store.delete(
-            filter={
-                "file_id": str(file_id),
-                "user_id": str(current_user.id),
-                "session_id": str(document.session_id)
+        if pinecone_index:
+            # Build filter for Pinecone deletion
+            pinecone_filter = {
+                "file_id": {"$eq": str(file_id)},
+                "user_id": {"$eq": str(current_user.id)}
             }
-        )
+            # Only add session_id if it exists
+            if document.session_id:
+                pinecone_filter["session_id"] = {"$eq": str(document.session_id)}
+
+            # Delete all vectors matching the filter
+            pinecone_index.delete(filter=pinecone_filter)
+            print(f"Deleted vectors from Pinecone for file_id: {file_id}")
+        else:
+            print("Warning: Pinecone index not initialized")
     except Exception as e:
         print(f"Warning: Error deleting from Pinecone: {e}")
+        import traceback
+        traceback.print_exc()
 
     # Update user's total storage
     current_user.total_storage_bytes -= document.file_size_bytes
