@@ -3,41 +3,66 @@
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { EmptyChatState } from "@/components/chat/EmptyChatState";
+import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { useChat } from "@/hooks/useChat";
 
 export function ChatView() {
-  const { input, setInput, messages, isChatLoading, handleSubmit } = useChat();
+  const {
+    input,
+    setInput,
+    messages,
+    isChatLoading,
+    handleSubmit,
+    sessions,
+    isLoadingSessions,
+    currentSessionId,
+    loadSession,
+    createNewSession,
+    handleDeleteSession,
+  } = useChat();
 
   return (
-    <div className="flex-1 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/50 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex-1 flex gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Sidebar */}
+      <ChatSidebar
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        isLoading={isLoadingSessions}
+        onSelectSession={loadSession}
+        onNewSession={createNewSession}
+        onDeleteSession={handleDeleteSession}
+      />
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-        {messages.length === 0 ? (
-          <EmptyChatState />
-        ) : (
-          messages.map((m) => <MessageBubble key={m.id} message={m} />)
-        )}
-        {isChatLoading && <TypingIndicator />}
-      </div>
+      {/* Chat */}
+      <div className="flex-1 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+          {messages.length === 0 ? (
+            <EmptyChatState />
+          ) : (
+            messages.map((m) => <MessageBubble key={m.id} message={m} />)
+          )}
+          {isChatLoading && <TypingIndicator />}
+        </div>
 
-      {/* Input */}
-      <div className="p-4 bg-neutral-950/50 border-t border-neutral-800">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question about your documents..."
-            className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-neutral-200 placeholder:text-neutral-500"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isChatLoading}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20"
-          >
-            Send
-          </button>
-        </form>
+        {/* Input */}
+        <div className="p-4 bg-neutral-950/50 border-t border-neutral-800">
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask a question about your documents..."
+              className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-neutral-200 placeholder:text-neutral-500"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || isChatLoading}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20"
+            >
+              Send
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
