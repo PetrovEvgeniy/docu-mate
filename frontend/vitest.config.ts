@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
@@ -29,7 +30,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': new URL('.', import.meta.url).pathname,
+      '@': resolve(__dirname, '.'),
     },
   },
 })
