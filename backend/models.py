@@ -43,7 +43,8 @@ class ChatSession(Base):
     # Relationships
     user = relationship("User", back_populates="chat_sessions")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
-    documents = relationship("Document", back_populates="session", cascade="all, delete-orphan")
+    # Documents should have session_id set to NULL when session is deleted (not cascade delete)
+    documents = relationship("Document", back_populates="session")
 
 
 class Document(Base):

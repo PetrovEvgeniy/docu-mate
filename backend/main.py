@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", message=".*bcrypt.*__about__.*")
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response, FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, field_validator
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -115,9 +115,18 @@ async def favicon():
 # ==================== Authentication Endpoints ====================
 
 class RegisterRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     name: str
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('Password cannot be empty')
+        if len(v) > 72:  # bcrypt limit
+            raise ValueError('Password too long (max 72 characters)')
+        return v
 
 class LoginRequest(BaseModel):
     email: str
