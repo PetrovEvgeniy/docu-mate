@@ -34,6 +34,8 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+!.env.example
+!**/.env.example
 
 # vercel
 .vercel
@@ -77,7 +79,5 @@ venv.bak/
 plan.md
 implementation_plan.md
 PHASE_*.md
-DEPLOYMENT.md
-**/PHASE_*.md
-.docs/
+docs/
 
