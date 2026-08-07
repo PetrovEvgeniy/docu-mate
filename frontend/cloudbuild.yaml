@@ -19,12 +19,18 @@ steps:
       - '--image=gcr.io/$PROJECT_ID/docu-mate-frontend:latest'
       - '--region=us-central1'
       - '--allow-unauthenticated'
-      - '--update-env-vars=NEXT_PUBLIC_API_URL=$_BACKEND_URL,AUTH_URL=$_FRONTEND_URL,NEXTAUTH_URL=$_FRONTEND_URL'
-      - '--update-secrets=AUTH_SECRET=NEXTAUTH_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,GITHUB_CLIENT_SECRET=GITHUB_CLIENT_SECRET:latest'
+      - '--clear-env-vars'
+      - '--clear-secrets'
+      # Public configuration (env vars)
+      - '--set-env-vars=NEXT_PUBLIC_API_URL=$_BACKEND_URL,AUTH_URL=$_FRONTEND_URL,NEXTAUTH_URL=$_FRONTEND_URL,GOOGLE_CLIENT_ID=$_GOOGLE_CLIENT_ID,GITHUB_CLIENT_ID=$_GITHUB_CLIENT_ID'
+      # Sensitive secrets (Secret Manager)
+      - '--set-secrets=AUTH_SECRET=NEXTAUTH_SECRET:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GITHUB_CLIENT_SECRET=GITHUB_CLIENT_SECRET:latest'
 
 substitutions:
   _BACKEND_URL: 'https://docu-mate-backend-368729308066.us-central1.run.app'
   _FRONTEND_URL: 'https://docu-mate-frontend-368729308066.us-central1.run.app'
+  _GOOGLE_CLIENT_ID: '368729308066-6dokpthrdtstc8gr2f7tinequdne4rj2.apps.googleusercontent.com'
+  _GITHUB_CLIENT_ID: 'Ov23li5vXTnoaRjBQqE4'
 
 options:
   logging: CLOUD_LOGGING_ONLY
