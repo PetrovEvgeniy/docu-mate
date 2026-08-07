@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (needed for build)
+RUN npm ci
 
 # Builder stage
 FROM node:20-alpine AS builder
@@ -19,6 +19,10 @@ COPY --from=deps /app/node_modules ./node_modules
 
 # Copy application code
 COPY . .
+
+# Accept build arg for API URL
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Build Next.js application
 RUN npm run build

@@ -5,6 +5,7 @@ import GitHub from "next-auth/providers/github"
 import type { User } from "@/lib/types"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true, // Required for Cloud Run deployment
   providers: [
     Credentials({
       credentials: {
@@ -49,10 +50,66 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      async profile(profile) {
+        // Call backend to create/login OAuth user
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+        const res = await fetch(`${apiUrl}/auth/oauth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: profile.email,
+            name: profile.name,
+            oauth_provider: 'google',
+            oauth_id: profile.sub,
+          }),
+        })
+
+        if (!res.ok) {
+          throw new Error('OAuth authentication failed')
+        }
+
+        const data = await res.json()
+        return {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          accessToken: data.access_token,
+          totalStorageBytes: data.user.total_storage_bytes,
+          storageLimitBytes: data.user.storage_limit_bytes,
+        }
+      },
     }),
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      async profile(profile) {
+        // Call backend to create/login OAuth user
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+        const res = await fetch(`${apiUrl}/auth/oauth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: profile.email,
+            name: profile.name || profile.login,
+            oauth_provider: 'github',
+            oauth_id: profile.id.toString(),
+          }),
+        })
+
+        if (!res.ok) {
+          throw new Error('OAuth authentication failed')
+        }
+
+        const data = await res.json()
+        return {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          accessToken: data.access_token,
+          totalStorageBytes: data.user.total_storage_bytes,
+          storageLimitBytes: data.user.storage_limit_bytes,
+        }
+      },
     }),
   ],
   callbacks: {

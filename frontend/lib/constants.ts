@@ -1,6 +1,6 @@
 import { MessageSquare, Database } from "lucide-react";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export const TABS = [
   { id: "data" as const, label: "Data Sources", icon: Database },
