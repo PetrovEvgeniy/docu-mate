@@ -52,12 +52,29 @@ if not all([PINECONE_API_KEY, PINECONE_INDEX_NAME, GEMINI_API_KEY]):
 # Initialize FastAPI app
 app = FastAPI(title="DocuMate AI API")
 
+@app.on_event("startup")
+async def startup_event():
+    """Run database migrations on startup"""
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import logging
+
+        logging.info("Running database migrations...")
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logging.info("Database migrations completed successfully!")
+    except Exception as e:
+        logging.error(f"Migration failed: {e}")
+        # Don't fail startup if migrations fail (tables might already exist)
+
 # Add CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://docu-mate-frontend-368729308066.us-central1.run.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -186,6 +203,56 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
             "id": str(user.id),
             "email": user.email,
             "name": user.name
+        }
+    }
+
+class OAuthLoginRequest(BaseModel):
+    email: EmailStr
+    name: Optional[str] = None
+    oauth_provider: str  # "google" or "github"
+    oauth_id: str
+
+@app.post("/auth/oauth", response_model=TokenResponse)
+async def oauth_login(request: OAuthLoginRequest, db: AsyncSession = Depends(get_db)):
+    """Login or register user via OAuth (Google/GitHub)"""
+    # Try to find existing user by email
+    user = await get_user_by_email(db, request.email)
+
+    if not user:
+        # Create new user for OAuth
+        user = User(
+            email=request.email,
+            name=request.name or request.email.split('@')[0],
+            oauth_provider=request.oauth_provider,
+            oauth_id=request.oauth_id,
+            password_hash=None  # OAuth users don't have passwords
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    else:
+        # Update OAuth info if user exists
+        if not user.oauth_provider:
+            user.oauth_provider = request.oauth_provider
+            user.oauth_id = request.oauth_id
+            await db.commit()
+            await db.refresh(user)
+
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name,
+            "total_storage_bytes": user.total_storage_bytes,
+            "storage_limit_bytes": user.storage_limit_bytes
         }
     }
 
