@@ -1,5 +1,17 @@
 name: Deploy to Google Cloud Run
 
+# SETUP REQUIRED:
+# This workflow requires Workload Identity Federation to be configured.
+# Add these secrets to your GitHub repository:
+#   - GCP_WORKLOAD_IDENTITY_PROVIDER: Full resource name of workload identity provider
+#   - GCP_SERVICE_ACCOUNT: Service account email with Cloud Run/Build permissions
+#
+# Setup guide: https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines
+#
+# Manual deployment alternative:
+#   cd backend && gcloud builds submit --config cloudbuild.yaml .
+#   cd frontend && gcloud builds submit --config cloudbuild.yaml .
+
 on:
   push:
     branches: [main]
