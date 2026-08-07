@@ -1,0 +1,35 @@
+steps:
+  # Build the container image with caching
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    args:
+      - --destination=gcr.io/$PROJECT_ID/docu-mate-frontend:latest
+      - --destination=gcr.io/$PROJECT_ID/docu-mate-frontend:$BUILD_ID
+      - --cache=true
+      - --cache-ttl=168h
+      - --compressed-caching=false
+      - --build-arg=NEXT_PUBLIC_API_URL=$_BACKEND_URL
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'docu-mate-frontend'
+      - '--image=gcr.io/$PROJECT_ID/docu-mate-frontend:latest'
+      - '--region=us-central1'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=NEXT_PUBLIC_API_URL=$_BACKEND_URL,AUTH_URL=$_FRONTEND_URL,NEXTAUTH_URL=$_FRONTEND_URL'
+      - '--set-secrets=AUTH_SECRET=NEXTAUTH_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GITHUB_CLIENT_ID=GITHUB_CLIENT_ID:latest,GITHUB_CLIENT_SECRET=GITHUB_CLIENT_SECRET:latest'
+
+substitutions:
+  _BACKEND_URL: 'https://docu-mate-backend-368729308066.us-central1.run.app'
+  _FRONTEND_URL: 'https://docu-mate-frontend-368729308066.us-central1.run.app'
+
+images:
+  - 'gcr.io/$PROJECT_ID/docu-mate-frontend:latest'
+  - 'gcr.io/$PROJECT_ID/docu-mate-frontend:$BUILD_ID'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
