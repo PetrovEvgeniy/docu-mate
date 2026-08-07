@@ -26,10 +26,6 @@ substitutions:
   _BACKEND_URL: 'https://docu-mate-backend-368729308066.us-central1.run.app'
   _FRONTEND_URL: 'https://docu-mate-frontend-368729308066.us-central1.run.app'
 
-images:
-  - 'gcr.io/$PROJECT_ID/docu-mate-frontend:latest'
-  - 'gcr.io/$PROJECT_ID/docu-mate-frontend:$BUILD_ID'
-
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: 'E2_HIGHCPU_8'

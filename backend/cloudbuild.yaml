@@ -20,10 +20,6 @@ steps:
       - '--allow-unauthenticated'
       - '--set-secrets=DATABASE_URL=DATABASE_URL:latest,SECRET_KEY=JWT_SECRET_KEY:latest,PINECONE_API_KEY=PINECONE_API_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest,PINECONE_INDEX_NAME=PINECONE_INDEX_NAME:latest'
 
-images:
-  - 'gcr.io/$PROJECT_ID/docu-mate-backend:latest'
-  - 'gcr.io/$PROJECT_ID/docu-mate-backend:$BUILD_ID'
-
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: 'E2_HIGHCPU_8'
