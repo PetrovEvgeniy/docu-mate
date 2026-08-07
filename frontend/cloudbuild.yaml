@@ -19,8 +19,6 @@ steps:
       - '--image=gcr.io/$PROJECT_ID/docu-mate-frontend:latest'
       - '--region=us-central1'
       - '--allow-unauthenticated'
-      - '--clear-env-vars'
-      - '--clear-secrets'
       # Public configuration (env vars)
       - '--set-env-vars=NEXT_PUBLIC_API_URL=$_BACKEND_URL,AUTH_URL=$_FRONTEND_URL,NEXTAUTH_URL=$_FRONTEND_URL,GOOGLE_CLIENT_ID=$_GOOGLE_CLIENT_ID,GITHUB_CLIENT_ID=$_GITHUB_CLIENT_ID'
       # Sensitive secrets (Secret Manager)
