@@ -15,6 +15,13 @@ An intelligent document management and chat system powered by AI. Upload your do
 - ☁️ **Cloud-Native** - Deployed on Google Cloud Run for scalability
 - 🚀 **CI/CD Pipeline** - Automated testing and deployment with GitHub Actions
 
+## 🔗 Live Links
+
+- **Frontend**: https://docu-mate-frontend-368729308066.us-central1.run.app
+- **API Documentation**: 
+  - [Swagger UI](https://docu-mate-backend-368729308066.us-central1.run.app/docs) - Interactive API explorer
+  - [ReDoc](https://docu-mate-backend-368729308066.us-central1.run.app/redoc) - Alternative API documentation
+
 ## 🎬 Demo
 
 ### Document Upload
