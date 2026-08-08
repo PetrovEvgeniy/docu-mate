@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Menu } from "lucide-react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { EmptyChatState } from "@/components/chat/EmptyChatState";
@@ -21,6 +23,8 @@ export function ChatView() {
     handleDeleteSession,
   } = useChat();
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
     <div className="flex-1 flex gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Sidebar */}
@@ -28,13 +32,27 @@ export function ChatView() {
         sessions={sessions}
         currentSessionId={currentSessionId}
         isLoading={isLoadingSessions}
+        isOpen={isSidebarOpen}
         onSelectSession={loadSession}
         onNewSession={createNewSession}
         onDeleteSession={handleDeleteSession}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       {/* Chat */}
       <div className="flex-1 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+        {/* Mobile header bar with sidebar toggle */}
+        <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-neutral-800 shrink-0">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-neutral-800 transition-colors"
+            aria-label="Open chat history"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="text-sm text-neutral-400">Chat History</span>
+        </div>
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
           {messages.length === 0 ? (
