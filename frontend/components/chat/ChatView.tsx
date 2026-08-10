@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
@@ -24,6 +24,25 @@ export function ChatView() {
   } = useChat();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const handleViewportChange = () => setIsSmallScreen(mediaQuery.matches);
+
+    handleViewportChange();
+
+    mediaQuery.addEventListener("change", handleViewportChange);
+    return () => mediaQuery.removeEventListener("change", handleViewportChange);
+  }, []);
+
+  const inputPlaceholder = isSmallScreen
+    ? "Ask about your docs..."
+    : "Ask a question about your documents...";
 
   return (
     <div className="flex-1 flex gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -64,18 +83,18 @@ export function ChatView() {
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-neutral-950/50 border-t border-neutral-800">
+        <div className="p-4 bg-neutral-950/50 border-t border-neutral-800 shrink-0">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question about your documents..."
+              placeholder={inputPlaceholder}
               className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-neutral-200 placeholder:text-neutral-500"
             />
             <button
               type="submit"
               disabled={!input.trim() || isChatLoading}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 sm:px-6 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/20 whitespace-nowrap shrink-0"
             >
               Send
             </button>
