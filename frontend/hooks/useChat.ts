@@ -123,8 +123,8 @@ export function useChat() {
           session.user.accessToken,
         );
 
-        // Update session ID if a new session was created
-        if (newSessionId && !currentSessionId) {
+        // Update session ID if returned by backend
+        if (newSessionId) {
           setCurrentSessionId(newSessionId);
         }
 
