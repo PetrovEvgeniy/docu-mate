@@ -1,8 +1,19 @@
 import { API_BASE } from "@/lib/constants"
 import type { ChatSession, Message } from "@/lib/types"
 
-export async function getChatSessions(accessToken: string): Promise<ChatSession[]> {
-  const response = await fetch(`${API_BASE}/chat/sessions`, {
+export interface SessionsResponse {
+  sessions: ChatSession[]
+  total: number
+  skip: number
+  limit: number
+}
+
+export async function getChatSessions(
+  accessToken: string,
+  skip: number = 0,
+  limit: number = 5
+): Promise<SessionsResponse> {
+  const response = await fetch(`${API_BASE}/chat/sessions?skip=${skip}&limit=${limit}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
 

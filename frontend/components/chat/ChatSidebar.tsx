@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef, useEffect } from "react"
 import { MessageSquarePlus, Trash2, MessageSquare } from "lucide-react"
 import type { ChatSession } from "@/lib/types"
 
@@ -12,6 +13,8 @@ interface ChatSidebarProps {
   onNewSession: () => void
   onDeleteSession: (sessionId: string) => void
   onClose?: () => void
+  onLoadMore: () => void
+  hasMore: boolean
 }
 
 export function ChatSidebar({
@@ -23,7 +26,11 @@ export function ChatSidebar({
   onNewSession,
   onDeleteSession,
   onClose,
+  onLoadMore,
+  hasMore,
 }: ChatSidebarProps) {
+  const loaderRef = useRef<HTMLDivElement>(null)
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -39,12 +46,30 @@ export function ChatSidebar({
     return date.toLocaleDateString()
   }
 
+  // Use IntersectionObserver for lazy loading from backend
+  useEffect(() => {
+    const loader = loaderRef.current
+    if (!loader || !hasMore || isLoading) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(loader)
+    return () => observer.disconnect()
+  }, [hasMore, onLoadMore, isLoading])
+
   return (
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden"
           onClick={onClose}
         />
       )}
@@ -52,27 +77,35 @@ export function ChatSidebar({
       {/* Sidebar */}
       <div
         className={`
-          fixed md:static inset-y-0 left-0 z-50
-          w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col
+          fixed md:static top-16 md:top-0 bottom-0 md:inset-y-0 left-0 z-30
+          w-64 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col overflow-hidden
           transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
+        style={{ maxHeight: 'calc(100vh - 150px)' }}
       >
         {/* Header */}
-        <div className="p-4 border-b border-neutral-800">
+        <div className="p-3 border-b border-neutral-800 shrink-0">
           <button
             onClick={onNewSession}
-            className="w-full flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
-            <MessageSquarePlus className="w-5 h-5" />
+            <MessageSquarePlus className="w-4 h-4" />
             New Chat
           </button>
         </div>
 
         {/* Sessions List */}
-        <div className="flex-1 overflow-y-auto p-2">
-          {isLoading ? (
-            <div className="flex items-center justify-center p-4 text-neutral-500">
+        <div
+          className="flex-1 overflow-y-auto p-2
+          [&::-webkit-scrollbar]:w-1.5
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:bg-neutral-600/50
+          [&::-webkit-scrollbar-thumb]:rounded-full
+          [&::-webkit-scrollbar-thumb:hover]:bg-neutral-500/70"
+        >
+          {isLoading && sessions.length === 0 ? (
+            <div className="flex items-center justify-center p-4 text-neutral-500 text-sm">
               Loading...
             </div>
           ) : sessions.length === 0 ? (
@@ -82,45 +115,54 @@ export function ChatSidebar({
               <span className="text-xs mt-1">Start a new conversation</span>
             </div>
           ) : (
-            sessions.map((session) => (
-              <div
-                key={session.id}
-                className={`group relative mb-1 rounded-lg transition-colors ${
-                  currentSessionId === session.id
-                    ? "bg-neutral-800"
-                    : "hover:bg-neutral-800/50"
-                }`}
-              >
-                <button
-                  onClick={() => {
-                    onSelectSession(session.id)
-                    onClose?.()
-                  }}
-                  className="w-full text-left p-3 pr-10"
+            <>
+              {sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`group relative mb-1 rounded-lg transition-colors ${
+                    currentSessionId === session.id
+                      ? "bg-neutral-800"
+                      : "hover:bg-neutral-800/50"
+                  }`}
                 >
-                  <div className="font-medium text-sm truncate mb-1">
-                    {session.title || "New Chat"}
-                  </div>
-                  <div className="text-xs text-neutral-500">
-                    {formatDate(session.updated_at)}
-                  </div>
-                </button>
+                  <button
+                    onClick={() => {
+                      onSelectSession(session.id)
+                      onClose?.()
+                    }}
+                    className="w-full text-left p-2.5 pr-9"
+                  >
+                    <div className="text-sm truncate mb-0.5 text-neutral-200">
+                      {session.title || "New Chat"}
+                    </div>
+                    <div className="text-xs text-neutral-500">
+                      {formatDate(session.updated_at)}
+                    </div>
+                  </button>
 
-                {/* Delete button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (confirm("Delete this chat session?")) {
-                      onDeleteSession(session.id)
-                    }
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded transition-all"
-                  title="Delete session"
-                >
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                </button>
-              </div>
-            ))
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm("Delete this chat session?")) {
+                        onDeleteSession(session.id)
+                      }
+                    }}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 rounded transition-all"
+                    title="Delete session"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Intersection observer target */}
+              {(hasMore || isLoading) && (
+                <div ref={loaderRef} className="text-center py-3 text-xs text-neutral-400">
+                  Loading more...
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

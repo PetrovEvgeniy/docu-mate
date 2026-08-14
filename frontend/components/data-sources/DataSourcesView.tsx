@@ -74,11 +74,16 @@ export function DataSourcesView() {
       {isLoadingDocuments ? (
         <div className="text-center text-neutral-500 py-8">Loading documents...</div>
       ) : uploadedFiles.length > 0 ? (
-        <div className="mt-8">
+        <div className="mt-4">
           <h3 className="text-lg font-medium mb-4 text-neutral-300">
             Your Documents ({uploadedFiles.length})
           </h3>
-          <div className="grid gap-3">
+          <div className="grid gap-3 max-h-64 overflow-y-auto pr-2
+            [&::-webkit-scrollbar]:w-1.5
+            [&::-webkit-scrollbar-track]:bg-neutral-800/30
+            [&::-webkit-scrollbar-thumb]:bg-neutral-600
+            [&::-webkit-scrollbar-thumb]:rounded-full
+            [&::-webkit-scrollbar-thumb:hover]:bg-neutral-500">
             {uploadedFiles.map((file) => (
               <div
                 key={file.id}

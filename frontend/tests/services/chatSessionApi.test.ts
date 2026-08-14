@@ -12,14 +12,25 @@ const TEST_TOKEN = 'test-token-123'
 
 describe('chatSessionApi', () => {
   describe('getChatSessions', () => {
-    it('fetches sessions successfully', async () => {
-      const sessions = await getChatSessions(TEST_TOKEN)
+    it('fetches sessions successfully with default pagination', async () => {
+      const response = await getChatSessions(TEST_TOKEN)
 
-      expect(sessions).toHaveLength(1)
-      expect(sessions[0]).toMatchObject({
+      expect(response.sessions).toHaveLength(1)
+      expect(response.sessions[0]).toMatchObject({
         id: 'session-1',
         title: 'Test Chat Session',
       })
+      expect(response.total).toBe(1)
+      expect(response.skip).toBe(0)
+      expect(response.limit).toBe(5)
+    })
+
+    it('fetches sessions with custom pagination', async () => {
+      const response = await getChatSessions(TEST_TOKEN, 0, 10)
+
+      expect(response.sessions).toHaveLength(1)
+      expect(response.skip).toBe(0)
+      expect(response.limit).toBe(10)
     })
 
     it('throws when request fails', async () => {

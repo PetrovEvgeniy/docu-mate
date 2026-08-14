@@ -146,14 +146,28 @@ export const handlers = [
     if (!auth) {
       return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 })
     }
-    return HttpResponse.json([
+
+    const url = new URL(request.url)
+    const skip = parseInt(url.searchParams.get('skip') || '0')
+    const limit = parseInt(url.searchParams.get('limit') || '10')
+
+    const allSessions = [
       {
         id: 'session-1',
         title: 'Test Chat Session',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       },
-    ])
+    ]
+
+    const sessions = allSessions.slice(skip, skip + limit)
+
+    return HttpResponse.json({
+      sessions,
+      total: allSessions.length,
+      skip,
+      limit,
+    })
   }),
 
   http.get(`${API_BASE}/chat/sessions/:sessionId/messages`, ({ request }) => {

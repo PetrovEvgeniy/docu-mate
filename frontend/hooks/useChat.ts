@@ -14,21 +14,42 @@ export function useChat() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [hasMoreSessions, setHasMoreSessions] = useState(false);
+  const [totalSessions, setTotalSessions] = useState(0);
 
-  // Load user's chat sessions
-  const loadSessions = useCallback(async () => {
+  // Load user's chat sessions with pagination
+  const loadSessions = useCallback(async (skip: number = 0, limit: number = 10, append: boolean = false) => {
     if (!session?.user?.accessToken) return;
 
     setIsLoadingSessions(true);
     try {
-      const userSessions = await getChatSessions(session.user.accessToken);
-      setSessions(userSessions);
+      const response = await getChatSessions(session.user.accessToken, skip, limit);
+
+      if (append) {
+        setSessions((prev) => {
+          // Deduplicate sessions by ID
+          const existingIds = new Set(prev.map(s => s.id));
+          const newSessions = response.sessions.filter(s => !existingIds.has(s.id));
+          return [...prev, ...newSessions];
+        });
+      } else {
+        setSessions(response.sessions);
+      }
+
+      setTotalSessions(response.total);
+      setHasMoreSessions(skip + response.sessions.length < response.total);
     } catch (error) {
       console.error("Failed to load sessions:", error);
     } finally {
       setIsLoadingSessions(false);
     }
   }, [session?.user?.accessToken]);
+
+  // Load more sessions (5 at a time)
+  const loadMoreSessions = useCallback(async () => {
+    if (!hasMoreSessions || isLoadingSessions || !session?.user?.accessToken) return;
+    await loadSessions(sessions.length, 5, true);
+  }, [hasMoreSessions, isLoadingSessions, sessions.length, loadSessions, session?.user?.accessToken]);
 
   // Load messages for a specific session
   const loadSession = useCallback(async (sessionId: string) => {
@@ -65,8 +86,8 @@ export function useChat() {
         createNewSession();
       }
 
-      // Reload sessions list
-      await loadSessions();
+      // Reload sessions list from beginning
+      await loadSessions(0, 10, false);
     } catch (error) {
       console.error("Failed to delete session:", error);
     }
@@ -75,10 +96,12 @@ export function useChat() {
   // Load sessions on mount
   useEffect(() => {
     if (session?.user?.accessToken) {
-      loadSessions();
+      loadSessions(0, 10, false);
     } else if (session === null) {
       // Session loaded but user not authenticated - clear sessions
       setSessions([]);
+      setHasMoreSessions(false);
+      setTotalSessions(0);
     }
   }, [session?.user?.accessToken, session, loadSessions]);
 
@@ -100,13 +123,15 @@ export function useChat() {
 
       try {
         let isFirstChunk = true;
+        let sources: import("@/lib/types").Source[] = [];
+
         const newSessionId = await sendChatMessage(
           userMessage.content,
           (chunk) => {
             if (isFirstChunk) {
               setMessages((prev) => [
                 ...prev,
-                { id: assistantId, role: "assistant", content: chunk },
+                { id: assistantId, role: "assistant", content: chunk, sources },
               ]);
               isFirstChunk = false;
             } else {
@@ -119,6 +144,9 @@ export function useChat() {
               );
             }
           },
+          (receivedSources) => {
+            sources = receivedSources;
+          },
           currentSessionId,
           session.user.accessToken,
         );
@@ -129,7 +157,7 @@ export function useChat() {
         }
 
         // Reload sessions to get the updated list (new session might have been created)
-        await loadSessions();
+        await loadSessions(0, 10, false);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         setMessages((prev) => [
@@ -140,7 +168,7 @@ export function useChat() {
         setIsChatLoading(false);
       }
     },
-    [input, isChatLoading, session?.user?.accessToken, currentSessionId, loadSessions],
+    [input, isChatLoading, session, currentSessionId, loadSessions],
   );
 
   return {
@@ -155,5 +183,8 @@ export function useChat() {
     loadSession,
     createNewSession,
     handleDeleteSession,
+    loadMoreSessions,
+    hasMoreSessions,
+    totalSessions,
   };
 }

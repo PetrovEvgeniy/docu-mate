@@ -1,11 +1,17 @@
 export type Tab = "data" | "chat";
 
+export interface Source {
+  filename: string;
+  page: number;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   session_id?: string;
   created_at?: string;
+  sources?: Source[];
 }
 
 export interface UploadedFile {

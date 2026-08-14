@@ -21,6 +21,8 @@ export function ChatView() {
     loadSession,
     createNewSession,
     handleDeleteSession,
+    loadMoreSessions,
+    hasMoreSessions,
   } = useChat();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -45,7 +47,7 @@ export function ChatView() {
     : "Ask a question about your documents...";
 
   return (
-    <div className="flex-1 flex gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex-1 flex gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-0 overflow-hidden">
       {/* Sidebar */}
       <ChatSidebar
         sessions={sessions}
@@ -56,10 +58,12 @@ export function ChatView() {
         onNewSession={createNewSession}
         onDeleteSession={handleDeleteSession}
         onClose={() => setIsSidebarOpen(false)}
+        onLoadMore={loadMoreSessions}
+        hasMore={hasMoreSessions}
       />
 
       {/* Chat */}
-      <div className="flex-1 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+      <div className="flex-1 min-w-0 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
         {/* Mobile header bar with sidebar toggle */}
         <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-neutral-800 shrink-0">
           <button
@@ -73,7 +77,12 @@ export function ChatView() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-6
+          [&::-webkit-scrollbar]:w-1.5
+          [&::-webkit-scrollbar-track]:bg-neutral-800/30
+          [&::-webkit-scrollbar-thumb]:bg-neutral-600
+          [&::-webkit-scrollbar-thumb]:rounded-full
+          [&::-webkit-scrollbar-thumb:hover]:bg-neutral-500">
           {messages.length === 0 ? (
             <EmptyChatState />
           ) : (

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, BigInteger, Integer, ForeignKey, DateTime, CheckConstraint, Index
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
 import uuid as uuid_lib
@@ -70,6 +70,7 @@ class ChatMessage(Base):
     session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
     role = Column(String(10), nullable=False)
     content = Column(String, nullable=False)  # Text type for unlimited length
+    sources = Column(JSONB, nullable=True)  # Store sources as JSON array
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships

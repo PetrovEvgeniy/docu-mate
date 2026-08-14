@@ -3,6 +3,8 @@ import tempfile
 import uuid
 import asyncio
 import warnings
+import json
+import base64
 from datetime import timedelta
 from typing import Optional
 
@@ -79,7 +81,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Session-Id"],  # Expose custom header for frontend to read
+    expose_headers=["X-Session-Id", "X-Sources"],  # Expose custom headers for frontend to read
 )
 
 # Initialize AI Services
@@ -107,7 +109,7 @@ if PINECONE_API_KEY and GEMINI_API_KEY:
             pinecone_api_key=PINECONE_API_KEY
         )
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             streaming=True,
             google_api_key=GEMINI_API_KEY
         )
@@ -437,6 +439,20 @@ async def chat(
         }
     )
 
+    # Extract unique sources from retrieved documents
+    sources = []
+    seen_sources = set()
+    for doc in retrieved_docs:
+        filename = doc.metadata.get("source_filename", "Unknown")
+        page = doc.metadata.get("page", 0)
+        source_key = f"{filename}:{page}"
+        if source_key not in seen_sources:
+            seen_sources.add(source_key)
+            sources.append({
+                "filename": filename,
+                "page": page + 1  # Convert to 1-indexed for display
+            })
+
     # Assemble Context
     context_text = "\n\n---\n\n".join([doc.page_content for doc in retrieved_docs])
 
@@ -453,27 +469,65 @@ Context:
         HumanMessage(content=request.message)
     ]
 
-    # Stream Response and save assistant message
-    async def generate():
-        full_response = ""
+    # Step 1: Collect full response from LLM
+    full_response = ""
+    try:
+        print(f"Starting LLM stream for message: {request.message[:50]}...")
         async for chunk in llm.astream(messages):
-            full_response += chunk.content
-            yield chunk.content
+            content = chunk.content
+            # Handle different content formats
+            if isinstance(content, dict):
+                # Content is a dict like {'type': 'text', 'text': '...'}
+                content = content.get('text', '')
+            elif isinstance(content, list):
+                # Content is a list of dicts
+                content = "".join(item.get('text', '') if isinstance(item, dict) else str(item) for item in content)
+            else:
+                content = str(content)
+            full_response += content
+        print(f"LLM stream completed. Response length: {len(full_response)}")
+    except Exception as e:
+        print(f"LLM error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate response: {str(e)}")
 
-        # Save assistant message after streaming completes
+    # Step 2: Save assistant message to database BEFORE streaming
+    # Only include sources if the AI actually used the documents
+    final_sources = sources if "don't have this information" not in full_response.lower() else []
+
+    try:
         assistant_msg = ChatMessage(
             session_id=session.id,
             role="assistant",
-            content=full_response
+            content=full_response,
+            sources=final_sources
         )
         db.add(assistant_msg)
         await db.commit()
+    except Exception as e:
+        print(f"Database error: {e}")
+        import traceback
+        traceback.print_exc()
+        # Continue anyway - we have the response
+
+    # Step 3: Stream the saved response to client (fast)
+    async def generate():
+        # Stream in small chunks for smooth appearance
+        chunk_size = 20
+        for i in range(0, len(full_response), chunk_size):
+            yield full_response[i:i + chunk_size]
+            await asyncio.sleep(0.005)  # Very small delay for smooth effect
+
+    # Encode sources as base64
+    sources_encoded = base64.b64encode(json.dumps(final_sources).encode('utf-8')).decode('utf-8') if final_sources else ""
 
     return StreamingResponse(
         generate(),
         media_type="text/plain",
         headers={
-            "X-Session-Id": str(session.id)  # Return session ID in header
+            "X-Session-Id": str(session.id),
+            "X-Sources": sources_encoded
         }
     )
 
@@ -481,26 +535,43 @@ Context:
 
 @app.get("/chat/sessions")
 async def list_chat_sessions(
+    skip: int = 0,
+    limit: int = 5,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get list of user's chat sessions"""
+    """Get list of user's chat sessions with pagination"""
+    # Get total count
+    count_result = await db.execute(
+        select(func.count(ChatSession.id))
+        .where(ChatSession.user_id == current_user.id)
+    )
+    total = count_result.scalar()
+
+    # Get paginated sessions
     result = await db.execute(
         select(ChatSession)
         .where(ChatSession.user_id == current_user.id)
         .order_by(ChatSession.updated_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     sessions = result.scalars().all()
 
-    return [
-        {
-            "id": str(session.id),
-            "title": session.title,
-            "created_at": session.created_at.isoformat(),
-            "updated_at": session.updated_at.isoformat()
-        }
-        for session in sessions
-    ]
+    return {
+        "sessions": [
+            {
+                "id": str(session.id),
+                "title": session.title,
+                "created_at": session.created_at.isoformat(),
+                "updated_at": session.updated_at.isoformat()
+            }
+            for session in sessions
+        ],
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
 
 @app.get("/chat/sessions/{session_id}/messages")
 async def get_session_messages(
@@ -531,6 +602,7 @@ async def get_session_messages(
             "id": str(msg.id),
             "role": msg.role,
             "content": msg.content,
+            "sources": msg.sources,  # Include sources from database
             "created_at": msg.created_at.isoformat()
         }
         for msg in messages

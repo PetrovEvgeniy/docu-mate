@@ -12,10 +12,10 @@ export default function Home() {
 
   return (
     <StorageProvider>
-      <div className="min-h-screen bg-neutral-950 text-neutral-50 font-sans flex flex-col">
+      <div className="min-h-screen h-screen bg-neutral-950 text-neutral-50 font-sans flex flex-col overflow-hidden">
         <AppHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
-        <main className="flex-1 max-w-5xl w-full mx-auto p-6 flex flex-col">
+        <main className="flex-1 max-w-5xl w-full mx-auto p-6 flex flex-col min-h-0">
           {activeTab === "data" ? <DataSourcesView /> : <ChatView />}
         </main>
       </div>
