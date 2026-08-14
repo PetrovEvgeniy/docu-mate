@@ -10,11 +10,13 @@ describe('chatApi', () => {
   describe('sendChatMessage', () => {
     it('streams response chunks and returns session id', async () => {
       const chunks: string[] = []
+      const sources: any[] = []
 
       const sessionId = await sendChatMessage(
         'hello',
         (chunk) => chunks.push(chunk),
-        null,
+        (srcs) => sources.push(...srcs),
+        undefined,
         TEST_TOKEN,
       )
 
@@ -53,6 +55,7 @@ describe('chatApi', () => {
       const sessionId = await sendChatMessage(
         'hello',
         () => undefined,
+        () => undefined,
         'session-abc',
         TEST_TOKEN,
       )
@@ -70,7 +73,7 @@ describe('chatApi', () => {
       )
 
       await expect(
-        sendChatMessage('hello', () => undefined, null, TEST_TOKEN),
+        sendChatMessage('hello', () => undefined, () => undefined, undefined, TEST_TOKEN),
       ).rejects.toThrow('Unauthorized')
     })
 
@@ -82,7 +85,7 @@ describe('chatApi', () => {
       )
 
       await expect(
-        sendChatMessage('hello', () => undefined, null, TEST_TOKEN),
+        sendChatMessage('hello', () => undefined, () => undefined, undefined, TEST_TOKEN),
       ).rejects.toThrow('Chat request failed.')
     })
   })

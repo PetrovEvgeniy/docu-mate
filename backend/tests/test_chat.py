@@ -450,7 +450,9 @@ async def test_list_chat_sessions(test_client, auth_headers, test_user, test_db)
     response = await test_client.get("/chat/sessions", headers=auth_headers)
 
     assert response.status_code == 200
-    sessions = response.json()
+    data = response.json()
+    assert "sessions" in data
+    sessions = data["sessions"]
     assert len(sessions) >= 2
 
     session_ids = {s["id"] for s in sessions}
@@ -465,7 +467,9 @@ async def test_list_sessions_ordered_by_updated(test_client, auth_headers, test_
     response = await test_client.get("/chat/sessions", headers=auth_headers)
 
     assert response.status_code == 200
-    sessions = response.json()
+    data = response.json()
+    assert "sessions" in data
+    sessions = data["sessions"]
 
     if len(sessions) > 1:
         # Verify descending order

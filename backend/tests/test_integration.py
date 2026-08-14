@@ -61,9 +61,10 @@ async def test_complete_user_journey_register_to_chat(test_client, test_db, samp
     # Step 5: Verify chat session created
     sessions_response = await test_client.get("/chat/sessions", headers=headers)
     assert sessions_response.status_code == 200
-    sessions = sessions_response.json()
-    assert len(sessions) >= 1
-    session_id = sessions[0]["id"]
+    data = sessions_response.json()
+    assert "sessions" in data
+    assert len(data["sessions"]) >= 1
+    session_id = data["sessions"][0]["id"]
 
     # Step 6: Chat again in same session
     chat2_response = await test_client.post(
@@ -184,12 +185,12 @@ async def test_multiple_users_data_isolation(test_client, test_db, sample_pdf_by
     # User A lists sessions - should only see their session
     sessions_a = await test_client.get("/chat/sessions", headers=headers_a)
     assert sessions_a.status_code == 200
-    assert len(sessions_a.json()) == 1
+    assert len(sessions_a.json()["sessions"]) == 1
 
     # User B lists sessions - should only see their session
     sessions_b = await test_client.get("/chat/sessions", headers=headers_b)
     assert sessions_b.status_code == 200
-    assert len(sessions_b.json()) == 1
+    assert len(sessions_b.json()["sessions"]) == 1
 
     # User A tries to delete User B's document - should fail
     delete_b_doc = await test_client.delete(
@@ -314,7 +315,7 @@ async def test_session_with_multiple_documents(test_client, test_db, sample_pdf_
 
     # Get session ID
     sessions = await test_client.get("/chat/sessions", headers=headers)
-    session_id = sessions.json()[0]["id"]
+    session_id = sessions.json()["sessions"][0]["id"]
 
     # Verify documents exist
     docs = await test_client.get("/documents", headers=headers)
@@ -531,7 +532,10 @@ async def test_empty_user_workflow(test_client):
     # List sessions - should be empty
     sessions = await test_client.get("/chat/sessions", headers=headers)
     assert sessions.status_code == 200
-    assert sessions.json() == []
+    data = sessions.json()
+    assert "sessions" in data
+    assert data["sessions"] == []
+    assert data["total"] == 0
 
     # Get storage - should show zero usage
     storage = await test_client.get("/storage", headers=headers)
