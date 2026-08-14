@@ -83,13 +83,13 @@ export function ChatView() {
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-neutral-950/50 border-t border-neutral-800 shrink-0">
+        <div className="p-3 sm:p-4 bg-neutral-950/50 border-t border-neutral-800 shrink-0">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={inputPlaceholder}
-              className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-neutral-200 placeholder:text-neutral-500"
+              className="flex-1 min-w-0 bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-3 sm:px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-neutral-200 placeholder:text-neutral-500"
             />
             <button
               type="submit"
